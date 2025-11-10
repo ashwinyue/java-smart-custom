@@ -90,16 +90,20 @@ public class ChatServiceImpl implements ChatService {
             );
             session.addMessage(userMessage);
             
-            // 使用Spring AI生成响应
+            // 使用Spring AI Alibaba生成响应
             String conversationId = sessionId; // 使用sessionId作为conversationId
+            
             // 添加null检查
             int maxHistory = properties != null && properties.getChat() != null ? 
                              properties.getChat().getMaxHistory() : 20;
+            
+            // 使用MessageChatMemoryAdvisor管理对话历史
             MessageChatMemoryAdvisor advisor = new MessageChatMemoryAdvisor(chatMemory, conversationId, maxHistory);
             
             // 添加用户消息到记忆
             chatMemory.add(conversationId, new UserMessage(request.getMessage()));
             
+            // 调用Spring AI Alibaba ChatClient生成响应
             String responseContent = chatClient
                 .prompt()
                 .user(request.getMessage())
@@ -172,16 +176,21 @@ public class ChatServiceImpl implements ChatService {
                 }
             }
             
-            // 使用Spring AI生成响应，集成工具调用
+            // 使用Spring AI Alibaba生成响应，集成工具调用
             String conversationId = sessionId;
+            
             // 添加null检查
             int maxHistory = properties != null && properties.getChat() != null ? 
                              properties.getChat().getMaxHistory() : 20;
+            
+            // 使用MessageChatMemoryAdvisor管理对话历史
             MessageChatMemoryAdvisor advisor = new MessageChatMemoryAdvisor(chatMemory, conversationId, maxHistory);
             
+            // 定义系统提示词
             String systemPrompt = "你是一个智能助手，可以使用提供的工具来帮助用户回答问题。";
             SystemPromptTemplate systemPromptTemplate = new SystemPromptTemplate(systemPrompt);
             
+            // 调用Spring AI Alibaba ChatClient生成响应，集成工具调用
             String responseContent = chatClient
                 .prompt()
                 .system(systemPromptTemplate.render())

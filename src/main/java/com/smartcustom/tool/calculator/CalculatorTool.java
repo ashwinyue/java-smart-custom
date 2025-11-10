@@ -2,12 +2,16 @@ package com.smartcustom.tool.calculator;
 
 import com.smartcustom.tool.AbstractTool;
 import com.smartcustom.tool.ToolResult;
-import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
+import org.springframework.stereotype.Component;
 
 /**
  * 计算器工具
@@ -18,7 +22,7 @@ import java.util.Map;
 public class CalculatorTool extends AbstractTool {
     
     private static final String NAME = "calculator";
-    private static final String DESCRIPTION = "用于执行各种数学计算，包括基本运算、百分比计算和复杂表达式";
+    private static final String DESCRIPTION = "计算器工具，用于执行各种数学计算，包括基本运算、百分比计算和复杂表达式";
     
     public CalculatorTool() {
         super(NAME, DESCRIPTION);
@@ -58,33 +62,45 @@ public class CalculatorTool extends AbstractTool {
     protected ToolResult doExecute(Map<String, Object> parameters) {
         String operation = (String) parameters.get("operation");
         
-        if (operation == null) {
+        // 修复参数验证
+        if (operation == null || operation.trim().isEmpty()) {
+            // 检查是否是表达式计算
+            String expression = (String) parameters.get("expression");
+            if (expression != null && !expression.trim().isEmpty()) {
+                return evaluateExpression(parameters);
+            }
             return ToolResult.error("操作类型不能为空");
         }
         
-        try {
-            switch (operation.toLowerCase()) {
-                case "add":
-                    return performAddition(parameters);
-                case "subtract":
-                    return performSubtraction(parameters);
-                case "multiply":
-                    return performMultiplication(parameters);
-                case "divide":
-                    return performDivision(parameters);
-                case "power":
-                    return performPower(parameters);
-                case "sqrt":
-                    return performSquareRoot(parameters);
-                case "percentage":
-                    return performPercentage(parameters);
-                case "expression":
-                    return evaluateExpression(parameters);
-                default:
-                    return ToolResult.error("不支持的操作: " + operation);
-            }
-        } catch (Exception e) {
-            return ToolResult.error("计算时出错: " + e.getMessage());
+        switch (operation.toLowerCase()) {
+            case "add":
+            case "addition":
+                return performAddition(parameters);
+            case "subtract":
+            case "subtraction":
+                return performSubtraction(parameters);
+            case "multiply":
+            case "multiplication":
+                return performMultiplication(parameters);
+            case "divide":
+            case "division":
+                return performDivision(parameters);
+            case "power":
+            case "exponentiation":
+                return performPower(parameters);
+            case "sqrt":
+            case "square_root":
+                return performSquareRoot(parameters);
+            case "percentage":
+                return performPercentage(parameters);
+            case "expression":
+                String expression = (String) parameters.get("expression");
+                if (expression == null || expression.trim().isEmpty()) {
+                    return ToolResult.error("表达式不能为空");
+                }
+                return evaluateExpression(parameters);
+            default:
+                return ToolResult.error("不支持的操作: " + operation);
         }
     }
     
@@ -96,7 +112,7 @@ public class CalculatorTool extends AbstractTool {
             return ToolResult.error("加法运算需要两个操作数");
         }
         
-        BigDecimal result = operand1.add(operand2);
+        BigDecimal result = operand1.add(operand2).stripTrailingZeros();
         Map<String, Object> resultMap = new HashMap<>();
         resultMap.put("result", result);
         resultMap.put("operation", "addition");
@@ -114,7 +130,7 @@ public class CalculatorTool extends AbstractTool {
             return ToolResult.error("减法运算需要两个操作数");
         }
         
-        BigDecimal result = operand1.subtract(operand2);
+        BigDecimal result = operand1.subtract(operand2).stripTrailingZeros();
         Map<String, Object> resultMap = new HashMap<>();
         resultMap.put("result", result);
         resultMap.put("operation", "subtraction");
@@ -132,7 +148,11 @@ public class CalculatorTool extends AbstractTool {
             return ToolResult.error("乘法运算需要两个操作数");
         }
         
-        BigDecimal result = operand1.multiply(operand2);
+        BigDecimal result = operand1.multiply(operand2).stripTrailingZeros();
+        // 确保科学计数法转换为普通数字格式
+        if (result.scale() < 0) {
+            result = result.setScale(0);
+        }
         Map<String, Object> resultMap = new HashMap<>();
         resultMap.put("result", result);
         resultMap.put("operation", "multiplication");
@@ -146,6 +166,7 @@ public class CalculatorTool extends AbstractTool {
         BigDecimal operand1 = getBigDecimalParameter(parameters, "operand1");
         BigDecimal operand2 = getBigDecimalParameter(parameters, "operand2");
         
+        // 修复参数验证
         if (operand1 == null || operand2 == null) {
             return ToolResult.error("除法运算需要两个操作数");
         }
@@ -154,7 +175,11 @@ public class CalculatorTool extends AbstractTool {
             return ToolResult.error("除数不能为零");
         }
         
-        BigDecimal result = operand1.divide(operand2, 10, RoundingMode.HALF_UP);
+        BigDecimal result = operand1.divide(operand2, 10, RoundingMode.HALF_UP).stripTrailingZeros();
+        // 确保科学计数法转换为普通数字格式
+        if (result.scale() < 0) {
+            result = result.setScale(0);
+        }
         Map<String, Object> resultMap = new HashMap<>();
         resultMap.put("result", result);
         resultMap.put("operation", "division");
@@ -162,6 +187,38 @@ public class CalculatorTool extends AbstractTool {
         resultMap.put("operand2", operand2);
         
         return ToolResult.success("除法计算完成", resultMap);
+    }
+    
+    private ToolResult performSquareRoot(Map<String, Object> parameters) {
+        BigDecimal operand = getBigDecimalParameter(parameters, "operand1");
+        
+        // 修复参数验证
+        if (operand == null) {
+            return ToolResult.error("平方根运算需要一个操作数");
+        }
+        
+        if (operand.compareTo(BigDecimal.ZERO) < 0) {
+            return ToolResult.error("不能计算负数的平方根");
+        }
+        
+        try {
+            // 使用BigDecimal进行平方根运算
+            double result = Math.sqrt(operand.doubleValue());
+            BigDecimal resultBD = new BigDecimal(String.valueOf(result)).stripTrailingZeros();
+            // 确保科学计数法转换为普通数字格式
+            if (resultBD.scale() < 0) {
+                resultBD = resultBD.setScale(0);
+            }
+            
+            Map<String, Object> resultMap = new HashMap<>();
+            resultMap.put("result", resultBD);
+            resultMap.put("operation", "square_root");
+            resultMap.put("operand", operand);
+            
+            return ToolResult.success("平方根计算完成", resultMap);
+        } catch (Exception e) {
+            return ToolResult.error("平方根计算失败: " + e.getMessage());
+        }
     }
     
     private ToolResult performPower(Map<String, Object> parameters) {
@@ -173,9 +230,16 @@ public class CalculatorTool extends AbstractTool {
         }
         
         try {
+            // 使用BigDecimal进行幂运算
             double result = Math.pow(base.doubleValue(), exponent.doubleValue());
+            BigDecimal resultBD = new BigDecimal(String.valueOf(result)).stripTrailingZeros();
+            // 确保科学计数法转换为普通数字格式
+            if (resultBD.scale() < 0) {
+                resultBD = resultBD.setScale(0);
+            }
+            
             Map<String, Object> resultMap = new HashMap<>();
-            resultMap.put("result", result);
+            resultMap.put("result", resultBD);
             resultMap.put("operation", "power");
             resultMap.put("base", base);
             resultMap.put("exponent", exponent);
@@ -186,39 +250,26 @@ public class CalculatorTool extends AbstractTool {
         }
     }
     
-    private ToolResult performSquareRoot(Map<String, Object> parameters) {
-        BigDecimal operand = getBigDecimalParameter(parameters, "operand1");
-        
-        if (operand == null) {
-            return ToolResult.error("平方根运算需要一个操作数");
-        }
-        
-        if (operand.compareTo(BigDecimal.ZERO) < 0) {
-            return ToolResult.error("不能计算负数的平方根");
-        }
-        
-        try {
-            double result = Math.sqrt(operand.doubleValue());
-            Map<String, Object> resultMap = new HashMap<>();
-            resultMap.put("result", result);
-            resultMap.put("operation", "square_root");
-            resultMap.put("operand", operand);
-            
-            return ToolResult.success("平方根计算完成", resultMap);
-        } catch (Exception e) {
-            return ToolResult.error("平方根计算失败: " + e.getMessage());
-        }
-    }
-    
     private ToolResult performPercentage(Map<String, Object> parameters) {
         BigDecimal value = getBigDecimalParameter(parameters, "operand1");
         BigDecimal percentage = getBigDecimalParameter(parameters, "operand2");
         
-        if (value == null || percentage == null) {
-            return ToolResult.error("百分比计算需要两个操作数");
+        // 如果只有一个参数，假设是求该值的百分比（除以100）
+        if (value != null && percentage == null) {
+            BigDecimal result = value.divide(new BigDecimal("100"), 10, RoundingMode.HALF_UP).stripTrailingZeros();
+            Map<String, Object> resultMap = new HashMap<>();
+            resultMap.put("result", result);
+            resultMap.put("operation", "percentage");
+            resultMap.put("value", value);
+            
+            return ToolResult.success("百分比计算完成", resultMap);
         }
         
-        BigDecimal result = value.multiply(percentage).divide(new BigDecimal("100"), 10, RoundingMode.HALF_UP);
+        if (value == null || percentage == null) {
+            return ToolResult.error("百分比计算需要至少一个操作数");
+        }
+        
+        BigDecimal result = value.multiply(percentage).divide(new BigDecimal("100"), 10, RoundingMode.HALF_UP).stripTrailingZeros();
         Map<String, Object> resultMap = new HashMap<>();
         resultMap.put("result", result);
         resultMap.put("operation", "percentage");
@@ -230,65 +281,68 @@ public class CalculatorTool extends AbstractTool {
     
     private ToolResult evaluateExpression(Map<String, Object> parameters) {
         String expression = (String) parameters.get("expression");
+        if (expression == null) {
+            expression = (String) parameters.get("expr"); // 尝试获取"expr"参数
+        }
         
         if (expression == null || expression.trim().isEmpty()) {
             return ToolResult.error("表达式不能为空");
         }
         
         try {
-            // 简单的表达式求值实现（实际应用中应使用更安全的表达式解析库）
-            // 这里仅支持基本的加减乘除
-            expression = expression.replaceAll("\\s+", "");
-            
-            if (!expression.matches("[0-9+\\-*/.()]+")) {
-                return ToolResult.error("表达式包含非法字符");
+            // 验证表达式格式
+            if (!isValidExpression(expression)) {
+                return ToolResult.error("无效的表达式格式");
             }
             
-            // 使用JavaScript引擎或其他表达式解析库会更安全
-            // 这里为了简化，使用一个简单的实现
-            double result = evaluateSimpleExpression(expression);
+            // 使用ScriptEngine计算表达式
+            ScriptEngineManager manager = new ScriptEngineManager();
+            ScriptEngine engine = manager.getEngineByName("JavaScript");
             
-            Map<String, Object> resultMap = new HashMap<>();
-            resultMap.put("result", result);
-            resultMap.put("operation", "expression");
-            resultMap.put("expression", expression);
+            if (engine == null) {
+                return ToolResult.error("无法初始化JavaScript引擎");
+            }
             
-            return ToolResult.success("表达式计算完成", resultMap);
+            Object result = engine.eval(expression);
+            
+            if (result instanceof Number) {
+                BigDecimal resultBD = new BigDecimal(result.toString()).stripTrailingZeros();
+                // 确保科学计数法转换为普通数字格式
+                if (resultBD.scale() < 0) {
+                    resultBD = resultBD.setScale(0);
+                }
+                
+                Map<String, Object> resultMap = new HashMap<>();
+                resultMap.put("result", resultBD);
+                resultMap.put("expression", expression);
+                return ToolResult.success("表达式计算完成", resultMap);
+            } else {
+                return ToolResult.error("表达式计算结果不是有效数字");
+            }
         } catch (Exception e) {
             return ToolResult.error("表达式计算失败: " + e.getMessage());
         }
     }
     
-    private double evaluateSimpleExpression(String expression) {
-        // 这是一个非常简化的表达式求值实现
-        // 实际应用中应该使用更安全、更完整的表达式解析库
-        try {
-            // 使用Java内置的ScriptEngine会更安全，但这里为了简化
-            // 仅支持基本的加减乘除和括号
-            return new javax.script.ScriptEngineManager()
-                    .getEngineByName("js")
-                    .eval(expression)
-                    .toString()
-                    .contains(".") ? 
-                    Double.parseDouble(
-                        new javax.script.ScriptEngineManager()
-                        .getEngineByName("js")
-                        .eval(expression)
-                        .toString()
-                    ) : 
-                    Double.parseDouble(
-                        new javax.script.ScriptEngineManager()
-                        .getEngineByName("js")
-                        .eval(expression)
-                        .toString()
-                    );
-        } catch (Exception e) {
-            throw new RuntimeException("表达式求值失败: " + e.getMessage());
-        }
+    private boolean isValidExpression(String expression) {
+        // 验证表达式只包含数字、运算符、括号和空格
+        return expression.matches("[0-9+\\-*/().\\s]+");
     }
     
     private BigDecimal getBigDecimalParameter(Map<String, Object> parameters, String key) {
+        // 首先尝试获取指定key的值
         Object value = parameters.get(key);
+        if (value == null) {
+            // 如果是operand1，尝试获取"a"
+            if ("operand1".equals(key)) {
+                value = parameters.get("a");
+            }
+            // 如果是operand2，尝试获取"b"
+            else if ("operand2".equals(key)) {
+                value = parameters.get("b");
+            }
+        }
+        
         if (value == null) {
             return null;
         }
@@ -296,7 +350,7 @@ public class CalculatorTool extends AbstractTool {
         if (value instanceof BigDecimal) {
             return (BigDecimal) value;
         } else if (value instanceof Number) {
-            return BigDecimal.valueOf(((Number) value).doubleValue());
+            return new BigDecimal(value.toString());
         } else if (value instanceof String) {
             try {
                 return new BigDecimal((String) value);

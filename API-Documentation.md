@@ -202,39 +202,44 @@ DELETE /api/tools/{toolName}/disable
 
 ### 1. 发票工具 (invoice)
 
-**功能**: 发票管理，支持创建、查询和列出发票
+**功能**: 发票管理，支持创建、查询和列表
 
 **参数**:
 - `action`: 操作类型 (create/query/list)
-- `id`: 发票ID (查询时需要)
-- `customer`: 客户名称 (创建时需要)
-- `amount`: 金额 (创建时需要)
-- `date`: 日期 (创建时需要)
+- `invoice_id`: 发票ID
+- `customer_name`: 客户名称
+- `amount`: 金额
+- `items`: 商品列表
 
 **示例**:
 ```json
 {
   "action": "create",
-  "customer": "测试客户",
-  "amount": 1000.0,
-  "date": "2023-10-01"
+  "customer_name": "张三",
+  "amount": 100.00,
+  "items": [
+    {
+      "name": "商品A",
+      "quantity": 2,
+      "price": 50.00
+    }
+  ]
 }
 ```
 
 ### 2. 计算器工具 (calculator)
 
-**功能**: 数学计算，支持基本运算和表达式求值
+**功能**: 数学计算，支持基本运算
 
 **参数**:
-- `operation`: 操作类型 (add/subtract/multiply/divide/power/sqrt/percent/evaluate)
-- `a`: 第一个操作数
-- `b`: 第二个操作数 (部分操作需要)
-- `expression`: 表达式 (evaluate操作需要)
+- `action`: 操作类型 (add/subtract/multiply/divide)
+- `a`: 第一个数字
+- `b`: 第二个数字
 
 **示例**:
 ```json
 {
-  "operation": "add",
+  "action": "add",
   "a": 10,
   "b": 5
 }
@@ -257,6 +262,167 @@ DELETE /api/tools/{toolName}/disable
   "action": "format",
   "date": "2023-10-01T12:00:00",
   "format": "yyyy-MM-dd HH:mm:ss"
+}
+```
+
+### 4. 订单查询工具 (order)
+
+**功能**: 订单查询和状态跟踪，支持订单状态查询和物流信息跟踪
+
+**参数**:
+- `action`: 操作类型 (query)
+- `order_id`: 订单ID
+
+**示例**:
+```json
+{
+  "action": "query",
+  "order_id": "ORD202311001"
+}
+```
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "message": "订单查询成功",
+  "data": {
+    "order_id": "ORD202311001",
+    "status": "已发货",
+    "status_description": "您的订单已发货，正在配送中",
+    "customer_name": "张三",
+    "order_date": "2023-11-10",
+    "total_amount": 299.00,
+    "logistics_info": {
+      "current_location": "北京转运中心",
+      "estimated_delivery": "2023-11-17",
+      "tracking_steps": [
+        {
+          "time": "2023-11-10 14:30:00",
+          "location": "上海仓库",
+          "status": "已揽收"
+        },
+        {
+          "time": "2023-11-11 09:15:00",
+          "location": "上海转运中心",
+          "status": "已发出"
+        },
+        {
+          "time": "2023-11-12 16:45:00",
+          "location": "北京转运中心",
+          "status": "到达目的地"
+        }
+      ]
+    }
+  }
+}
+```
+
+### 5. 退款申请工具 (refund)
+
+**功能**: 退款申请和状态查询，支持提交退款申请、查询退款状态和获取退款原因列表
+
+**参数**:
+- `action`: 操作类型 (submit/query/get_reasons)
+- `refund_id`: 退款ID (查询时需要)
+- `order_id`: 订单ID (提交申请时需要)
+- `reason`: 退款原因 (提交申请时需要)
+- `amount`: 退款金额 (提交申请时需要)
+
+**示例（提交退款申请）**:
+```json
+{
+  "action": "submit",
+  "order_id": "ORD202311001",
+  "reason": "不想要了",
+  "amount": 299.00
+}
+```
+
+**响应示例（提交退款申请）**:
+```json
+{
+  "success": true,
+  "message": "退款申请提交成功",
+  "data": {
+    "refund_id": "REF20231115001",
+    "order_id": "ORD202311001",
+    "status": "已提交",
+    "status_description": "退款申请已提交，等待审核",
+    "reason": "不想要了",
+    "amount": 299.00,
+    "submit_time": "2023-11-15 10:30:00"
+  }
+}
+```
+
+**示例（查询退款状态）**:
+```json
+{
+  "action": "query",
+  "refund_id": "REF20231115001"
+}
+```
+
+**响应示例（查询退款状态）**:
+```json
+{
+  "success": true,
+  "message": "退款状态查询成功",
+  "data": {
+    "refund_id": "REF20231115001",
+    "order_id": "ORD202311001",
+    "status": "已审核",
+    "status_description": "退款申请已通过审核，将在3-5个工作日内到账",
+    "reason": "不想要了",
+    "amount": 299.00,
+    "submit_time": "2023-11-15 10:30:00",
+    "review_time": "2023-11-15 14:20:00",
+    "estimated_refund_time": "2023-11-20"
+  }
+}
+```
+
+**示例（获取退款原因列表）**:
+```json
+{
+  "action": "get_reasons"
+}
+```
+
+**响应示例（获取退款原因列表）**:
+```json
+{
+  "success": true,
+  "message": "退款原因列表获取成功",
+  "data": {
+    "reasons": [
+      {
+        "code": "no_longer_wanted",
+        "description": "不想要了"
+      },
+      {
+        "code": "wrong_item",
+        "description": "商品错发/漏发"
+      },
+      {
+        "code": "quality_issue",
+        "description": "质量问题"
+      },
+      {
+        "code": "not_as_described",
+        "description": "与描述不符"
+      },
+      {
+        "code": "damaged",
+        "description": "商品损坏"
+      },
+      {
+        "code": "other",
+        "description": "其他原因"
+      }
+    ]
+  }
 }
 ```
 

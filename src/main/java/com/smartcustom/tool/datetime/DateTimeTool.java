@@ -110,8 +110,9 @@ public class DateTimeTool extends AbstractTool {
         try {
             switch (action.toLowerCase()) {
                 case "format":
-                    return formatDate(parameters);
+                    return formatDateTime(parameters);
                 case "calculate":
+                case "difference":
                     return calculateDifference(parameters);
                 case "add":
                     return addOrSubtractTime(parameters);
@@ -124,6 +125,50 @@ public class DateTimeTool extends AbstractTool {
             }
         } catch (Exception e) {
             return ToolResult.error("日期时间操作出错: " + e.getMessage());
+        }
+    }
+    
+    private ToolResult formatDateTime(Map<String, Object> parameters) {
+        String datetime = (String) parameters.get("datetime");
+        String format = (String) parameters.get("format");
+        
+        if (datetime == null || datetime.trim().isEmpty()) {
+            return ToolResult.error("日期时间不能为空");
+        }
+        
+        // 默认输出格式
+        if (format == null || format.trim().isEmpty()) {
+            format = "yyyy-MM-dd HH:mm:ss";
+        }
+        
+        try {
+            DateTimeFormatter outputFormatter = DateTimeFormatter.ofPattern(format);
+            
+            // 解析输入的日期时间
+            LocalDateTime dateTime;
+            if (datetime.contains("T")) {
+                // ISO格式日期时间
+                dateTime = LocalDateTime.parse(datetime);
+            } else if (datetime.contains(" ")) {
+                // 自定义格式日期时间
+                DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                dateTime = LocalDateTime.parse(datetime, inputFormatter);
+            } else {
+                // 只是日期
+                LocalDate date = LocalDate.parse(datetime);
+                dateTime = date.atStartOfDay();
+            }
+            
+            String formatted = dateTime.format(outputFormatter);
+            
+            Map<String, Object> resultMap = new HashMap<>();
+            resultMap.put("formatted", formatted);
+            resultMap.put("original", datetime);
+            resultMap.put("format", format);
+            
+            return ToolResult.success("日期时间格式化完成", resultMap);
+        } catch (Exception e) {
+            return ToolResult.error("日期时间格式化失败: " + e.getMessage());
         }
     }
     
@@ -181,114 +226,100 @@ public class DateTimeTool extends AbstractTool {
         }
     }
     
-    private ToolResult calculateDifference(Map<String, Object> parameters) {
-        String startDateStr = (String) parameters.get("startDate");
-        String endDateStr = (String) parameters.get("endDate");
-        String unit = (String) parameters.get("unit");
+    private ToolResult addOrSubtractTime(Map<String, Object> parameters) {
+        String datetime = (String) parameters.get("datetime");
+        Integer days = (Integer) parameters.get("days");
+        String operation = (String) parameters.get("operation");
         
-        if (startDateStr == null || startDateStr.trim().isEmpty()) {
-            return ToolResult.error("开始日期不能为空");
+        if (datetime == null || datetime.trim().isEmpty()) {
+            return ToolResult.error("日期时间不能为空");
         }
         
-        if (endDateStr == null || endDateStr.trim().isEmpty()) {
-            return ToolResult.error("结束日期不能为空");
-        }
-        
-        if (unit == null || unit.trim().isEmpty()) {
-            unit = "days";
+        if (days == null) {
+            return ToolResult.error("天数不能为空");
         }
         
         try {
-            LocalDate startDate = LocalDate.parse(startDateStr);
-            LocalDate endDate = LocalDate.parse(endDateStr);
-            
-            long difference;
-            switch (unit.toLowerCase()) {
-                case "days":
-                    difference = ChronoUnit.DAYS.between(startDate, endDate);
-                    break;
-                case "weeks":
-                    difference = ChronoUnit.WEEKS.between(startDate, endDate);
-                    break;
-                case "months":
-                    difference = ChronoUnit.MONTHS.between(startDate, endDate);
-                    break;
-                case "years":
-                    difference = ChronoUnit.YEARS.between(startDate, endDate);
-                    break;
-                default:
-                    return ToolResult.error("不支持的时间单位: " + unit);
+            LocalDateTime dateTime;
+            if (datetime.contains("T")) {
+                // ISO格式日期时间
+                dateTime = LocalDateTime.parse(datetime);
+            } else if (datetime.contains(" ")) {
+                // 自定义格式日期时间
+                DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                dateTime = LocalDateTime.parse(datetime, inputFormatter);
+            } else {
+                // 只是日期
+                LocalDate date = LocalDate.parse(datetime);
+                dateTime = date.atStartOfDay();
             }
             
-            Map<String, Object> resultMap = new HashMap<>();
-            resultMap.put("difference", difference);
-            resultMap.put("unit", unit);
-            resultMap.put("startDate", startDate);
-            resultMap.put("endDate", endDate);
+            LocalDateTime resultDateTime = dateTime.plusDays(days);
             
-            return ToolResult.success("日期差计算完成", resultMap);
+            Map<String, Object> resultMap = new HashMap<>();
+            resultMap.put("result", resultDateTime.toString());
+            resultMap.put("original", datetime);
+            resultMap.put("days", days);
+            
+            return ToolResult.success("日期时间计算完成", resultMap);
         } catch (Exception e) {
-            return ToolResult.error("日期差计算失败: " + e.getMessage());
+            return ToolResult.error("日期时间计算失败: " + e.getMessage());
         }
     }
     
-    private ToolResult addOrSubtractTime(Map<String, Object> parameters) {
-        String baseDateStr = (String) parameters.get("baseDate");
-        Integer amount = (Integer) parameters.get("amount");
-        String timeUnit = (String) parameters.get("timeUnit");
-        String operation = (String) parameters.get("operation");
+    private ToolResult calculateDifference(Map<String, Object> parameters) {
+        String datetime1 = (String) parameters.get("datetime1");
+        String datetime2 = (String) parameters.get("datetime2");
         
-        if (baseDateStr == null || baseDateStr.trim().isEmpty()) {
-            return ToolResult.error("基准日期不能为空");
+        if (datetime1 == null || datetime1.trim().isEmpty()) {
+            return ToolResult.error("第一个日期时间不能为空");
         }
         
-        if (amount == null) {
-            return ToolResult.error("数量不能为空");
-        }
-        
-        if (timeUnit == null || timeUnit.trim().isEmpty()) {
-            timeUnit = "days";
-        }
-        
-        if (operation == null || operation.trim().isEmpty()) {
-            operation = "add";
+        if (datetime2 == null || datetime2.trim().isEmpty()) {
+            return ToolResult.error("第二个日期时间不能为空");
         }
         
         try {
-            LocalDate baseDate = LocalDate.parse(baseDateStr);
-            LocalDate resultDate;
+            LocalDateTime dateTime1;
+            LocalDateTime dateTime2;
             
-            switch (timeUnit.toLowerCase()) {
-                case "days":
-                    resultDate = operation.equalsIgnoreCase("add") ? 
-                            baseDate.plusDays(amount) : baseDate.minusDays(amount);
-                    break;
-                case "weeks":
-                    resultDate = operation.equalsIgnoreCase("add") ? 
-                            baseDate.plusWeeks(amount) : baseDate.minusWeeks(amount);
-                    break;
-                case "months":
-                    resultDate = operation.equalsIgnoreCase("add") ? 
-                            baseDate.plusMonths(amount) : baseDate.minusMonths(amount);
-                    break;
-                case "years":
-                    resultDate = operation.equalsIgnoreCase("add") ? 
-                            baseDate.plusYears(amount) : baseDate.minusYears(amount);
-                    break;
-                default:
-                    return ToolResult.error("不支持的时间单位: " + timeUnit);
+            // 解析第一个日期时间
+            if (datetime1.contains("T")) {
+                dateTime1 = LocalDateTime.parse(datetime1);
+            } else if (datetime1.contains(" ")) {
+                DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                dateTime1 = LocalDateTime.parse(datetime1, inputFormatter);
+            } else {
+                LocalDate date = LocalDate.parse(datetime1);
+                dateTime1 = date.atStartOfDay();
             }
             
-            Map<String, Object> resultMap = new HashMap<>();
-            resultMap.put("resultDate", resultDate);
-            resultMap.put("baseDate", baseDate);
-            resultMap.put("amount", amount);
-            resultMap.put("timeUnit", timeUnit);
-            resultMap.put("operation", operation);
+            // 解析第二个日期时间
+            if (datetime2.contains("T")) {
+                dateTime2 = LocalDateTime.parse(datetime2);
+            } else if (datetime2.contains(" ")) {
+                DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                dateTime2 = LocalDateTime.parse(datetime2, inputFormatter);
+            } else {
+                LocalDate date = LocalDate.parse(datetime2);
+                dateTime2 = date.atStartOfDay();
+            }
             
-            return ToolResult.success("日期计算完成", resultMap);
+            // 计算差异
+            long days = ChronoUnit.DAYS.between(dateTime2, dateTime1);
+            long hours = ChronoUnit.HOURS.between(dateTime2, dateTime1) % 24;
+            long minutes = ChronoUnit.MINUTES.between(dateTime2, dateTime1) % 60;
+            
+            Map<String, Object> resultMap = new HashMap<>();
+            resultMap.put("days", days);
+            resultMap.put("hours", hours);
+            resultMap.put("minutes", minutes);
+            resultMap.put("datetime1", datetime1);
+            resultMap.put("datetime2", datetime2);
+            
+            return ToolResult.success("日期时间差计算完成", resultMap);
         } catch (Exception e) {
-            return ToolResult.error("日期计算失败: " + e.getMessage());
+            return ToolResult.error("日期时间差计算失败: " + e.getMessage());
         }
     }
     

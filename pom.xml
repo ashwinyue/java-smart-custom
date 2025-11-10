@@ -19,8 +19,9 @@
 
     <properties>
         <java.version>21</java.version>
-        <spring-ai.version>1.0.0-M1</spring-ai.version>
     </properties>
+
+
 
     <dependencies>
         <!-- Spring Boot Starters -->
@@ -45,11 +46,11 @@
             <artifactId>spring-boot-starter-cache</artifactId>
         </dependency>
 
-        <!-- Spring AI OpenAI -->
+        <!-- Spring AI Core -->
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-openai-spring-boot-starter</artifactId>
-            <version>${spring-ai.version}</version>
+            <version>1.0.0-M2</version>
         </dependency>
 
         <!-- Database -->
@@ -146,6 +147,11 @@
             <releases>
                 <enabled>false</enabled>
             </releases>
+        </repository>
+        <repository>
+            <id>alibaba-maven</id>
+            <name>Alibaba Maven</name>
+            <url>https://maven.aliyun.com/repository/public</url>
         </repository>
     </repositories>
 </project>

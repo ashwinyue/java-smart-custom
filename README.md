@@ -11,6 +11,8 @@ SmartCustom 是一个基于 Spring AI 的智能定制平台，提供聊天服务
 
 - 🤖 **智能聊天**: 基于 Spring AI 的智能对话服务，支持会话管理和历史记录
 - 🔧 **工具系统**: 可扩展的工具插件系统，支持自定义工具开发
+- 📦 **订单管理**: 内置订单查询和状态跟踪功能
+- 💰 **退款处理**: 支持退款申请提交和状态查询
 - 📊 **业务工具**: 内置发票管理、计算器、日期时间等实用工具
 - 🚀 **高性能**: 异步处理和缓存机制，提供高性能服务
 - 📚 **完整文档**: 详细的API文档和开发指南
@@ -93,6 +95,28 @@ curl -X POST http://localhost:8080/api/tools/calculator/execute \
   }'
 ```
 
+查询订单状态：
+```bash
+curl -X POST http://localhost:8080/api/tools/order/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "action": "query",
+    "order_id": "ORD202311001"
+  }'
+```
+
+申请退款：
+```bash
+curl -X POST http://localhost:8080/api/tools/refund/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "action": "submit",
+    "order_id": "ORD202311001",
+    "reason": "不想要了",
+    "amount": 299.00
+  }'
+```
+
 ### 发票管理
 
 创建新发票：
@@ -122,7 +146,9 @@ src/main/java/com/smartcustom/
 └── tool/            # 工具插件
     ├── invoice/     # 发票工具
     ├── calculator/  # 计算器工具
-    └── datetime/    # 日期时间工具
+    ├── datetime/    # 日期时间工具
+    ├── order/       # 订单查询工具
+    └── refund/      # 退款申请工具
 ```
 
 ### 自定义工具开发

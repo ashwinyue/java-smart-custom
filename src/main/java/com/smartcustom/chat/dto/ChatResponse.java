@@ -14,6 +14,13 @@ import java.time.LocalDateTime;
 public class ChatResponse {
     
     /**
+     * 消息类型枚举
+     */
+    public enum MessageType {
+        USER, ASSISTANT, SYSTEM, ERROR
+    }
+    
+    /**
      * 会话ID
      */
     @JsonProperty("sessionId")
@@ -55,6 +62,12 @@ public class ChatResponse {
      */
     @JsonProperty("error")
     private String error;
+    
+    /**
+     * 消息类型
+     */
+    @JsonProperty("type")
+    private MessageType type;
     
     /**
      * 令牌使用情况内部类
@@ -147,6 +160,7 @@ public class ChatResponse {
         response.setSessionId(sessionId);
         response.setError(error);
         response.setDone(true);
+        response.setType(MessageType.ERROR);
         return response;
     }
     
@@ -211,5 +225,18 @@ public class ChatResponse {
     
     public void setError(String error) {
         this.error = error;
+    }
+    
+    @JsonProperty("type")
+    public MessageType getType() {
+        return type;
+    }
+    
+    public void setType(MessageType type) {
+        this.type = type;
+    }
+    
+    public boolean isError() {
+        return error != null && !error.isEmpty();
     }
 }
