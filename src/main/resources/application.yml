@@ -1,0 +1,104 @@
+# 智能客服系统配置文件
+
+# 服务器配置
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+# Spring配置
+spring:
+  application:
+    name: java-smart-custom
+  profiles:
+    active: dev
+  
+  # 数据库配置
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  
+  # JPA配置
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+  
+  # Jackson配置
+  jackson:
+    time-zone: GMT+8
+    date-format: yyyy-MM-dd HH:mm:ss
+    serialization:
+      write-dates-as-timestamps: false
+  
+  # 缓存配置
+  cache:
+    type: simple
+
+# Spring AI Alibaba配置
+spring:
+  ai:
+    alibaba:
+      dashscope:
+        api-key: ${DASHSCOPE_API_KEY:your-api-key}
+        chat:
+          options:
+            model: qwen-plus
+            temperature: 0.7
+            max-tokens: 1500
+
+# 日志配置
+logging:
+  level:
+    com.smartcustom: DEBUG
+    org.springframework.web: DEBUG
+    org.springframework.ai: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/smart-custom.log
+
+# 管理端点配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+# 自定义配置
+smartcustom:
+  # 插件配置
+  plugin:
+    enabled: true
+    scan-packages: com.smartcustom.tool
+    hot-reload: true
+  # 工具配置
+  tool:
+    enabled: true
+    timeout: 30000
+  # 聊天配置
+  chat:
+    max-history: 20
+    session-timeout: 3600000
+  # API配置
+  api:
+    version: v1
+    cors:
+      allowed-origins: "*"
+      allowed-methods: GET,POST,PUT,DELETE,OPTIONS
+      allowed-headers: "*"
+      allow-credentials: true
