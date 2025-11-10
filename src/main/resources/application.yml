@@ -45,17 +45,15 @@ spring:
   cache:
     type: simple
 
-# Spring AI Alibaba配置
-spring:
+# Spring AI OpenAI配置
   ai:
-    alibaba:
-      dashscope:
-        api-key: ${DASHSCOPE_API_KEY:your-api-key}
-        chat:
-          options:
-            model: qwen-plus
-            temperature: 0.7
-            max-tokens: 1500
+    openai:
+      api-key: ${OPENAI_API_KEY:your-openai-api-key-here}
+      base-url: ${OPENAI_API_BASE:https://api.openai.com/v1}
+      chat:
+        model: ${OPENAI_MODEL:gpt-3.5-turbo}
+        temperature: 0.7
+        max-tokens: 2000
 
 # 日志配置
 logging:

@@ -20,8 +20,6 @@ public class CacheConfig {
      */
     @Bean
     public CacheManager cacheManager() {
-        ConcurrentMapCacheManager cacheManager = new ConcurrentMapCacheManager();
-        cacheManager.setCacheNames("chatSessions", "toolResults", "pluginCache");
-        return cacheManager;
+        return new ConcurrentMapCacheManager("chatSessions", "toolResults", "pluginCache", "toolCache", "enabledToolCache");
     }
 }

@@ -18,7 +18,7 @@ import java.util.concurrent.CompletableFuture;
  * @author SmartCustom Team
  */
 @RestController
-@RequestMapping("/api/chat")
+@RequestMapping("/chat")
 @CrossOrigin(origins = "*", maxAge = 3600)
 public class ChatController {
     

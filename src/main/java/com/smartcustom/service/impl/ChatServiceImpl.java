@@ -7,6 +7,9 @@ import com.smartcustom.model.dto.ChatRequest;
 import com.smartcustom.model.dto.ChatResponse;
 import com.smartcustom.service.ChatService;
 import com.smartcustom.service.ToolManager;
+import com.smartcustom.tool.ToolResult;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.PromptChatMemoryAdvisor;
@@ -16,7 +19,6 @@ import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.SystemPromptTemplate;
-import org.springframework.ai.model.function.FunctionCallback;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -26,6 +28,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -46,6 +49,8 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Service
 public class ChatServiceImpl implements ChatService {
+    
+    private static final Logger logger = LoggerFactory.getLogger(ChatServiceImpl.class);
     
     private final ChatClient chatClient;
     private final ChatMemory chatMemory;
@@ -87,7 +92,10 @@ public class ChatServiceImpl implements ChatService {
             
             // 使用Spring AI生成响应
             String conversationId = sessionId; // 使用sessionId作为conversationId
-            MessageChatMemoryAdvisor advisor = new MessageChatMemoryAdvisor(chatMemory, conversationId, properties.getChat().getMaxHistory());
+            // 添加null检查
+            int maxHistory = properties != null && properties.getChat() != null ? 
+                             properties.getChat().getMaxHistory() : 20;
+            MessageChatMemoryAdvisor advisor = new MessageChatMemoryAdvisor(chatMemory, conversationId, maxHistory);
             
             // 添加用户消息到记忆
             chatMemory.add(conversationId, new UserMessage(request.getMessage()));
@@ -117,6 +125,7 @@ public class ChatServiceImpl implements ChatService {
             return ChatResponse.fromChatMessage(assistantMessage);
             
         } catch (Exception e) {
+            logger.error("处理聊天请求时出错", e);
             return ChatResponse.error(request.getSessionId(), "处理聊天请求时出错: " + e.getMessage());
         }
     }
@@ -165,7 +174,10 @@ public class ChatServiceImpl implements ChatService {
             
             // 使用Spring AI生成响应，集成工具调用
             String conversationId = sessionId;
-            MessageChatMemoryAdvisor advisor = new MessageChatMemoryAdvisor(chatMemory, conversationId, properties.getChat().getMaxHistory());
+            // 添加null检查
+            int maxHistory = properties != null && properties.getChat() != null ? 
+                             properties.getChat().getMaxHistory() : 20;
+            MessageChatMemoryAdvisor advisor = new MessageChatMemoryAdvisor(chatMemory, conversationId, maxHistory);
             
             String systemPrompt = "你是一个智能助手，可以使用提供的工具来帮助用户回答问题。";
             SystemPromptTemplate systemPromptTemplate = new SystemPromptTemplate(systemPrompt);
@@ -234,8 +246,10 @@ public class ChatServiceImpl implements ChatService {
         // 存储会话
         sessionStore.put(sessionId, session);
         
-        // 更新用户会话列表
-        userSessions.computeIfAbsent(userId, k -> new ArrayList<>()).add(sessionId);
+        // 更新用户会话列表 - 添加null检查
+        if (userId != null) {
+            userSessions.computeIfAbsent(userId, k -> new ArrayList<>()).add(sessionId);
+        }
         
         return session;
     }
@@ -260,7 +274,9 @@ public class ChatServiceImpl implements ChatService {
     @Override
     @Scheduled(fixedRate = 300000) // 每5分钟执行一次
     public void cleanupExpiredSessions() {
-        long sessionTimeout = properties.getChat().getSessionTimeout();
+        // 添加null检查
+        long sessionTimeout = properties != null && properties.getChat() != null ? 
+                             properties.getChat().getSessionTimeout() : 3600000;
         LocalDateTime cutoffTime = LocalDateTime.now().minusSeconds(sessionTimeout / 1000);
         
         sessionStore.entrySet().removeIf(entry -> {
